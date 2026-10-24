@@ -1,104 +1,110 @@
+
 <?php
-session_start();
+// Secure session configuration
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
 
-require_once "db.php";
+    session_start();
+}
 
-if (isset($_SESSION["user_id"])) {
-    header("Location: course.php");
+require_once __DIR__ . '/db.php';
+
+// Redirect already authenticated users
+if (isset($_SESSION['user_id'])) {
+    $landing = ($_SESSION['usertype'] ?? '') === 'Admin'
+        ? 'course.php'
+        : 'subjects.php';
+
+    header('Location: ' . $landing);
     exit();
 }
 
-$error = "";
+$error = '';
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $login = trim($_POST["login"] ?? "");
-    $password = $_POST["password"] ?? "";
+    $login = trim($_POST['login'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-    if ($login === "" || $password === "") {
-
-        $error = "Please enter your username/email and password.";
+    if ($login === '' || $password === '') {
+        $error = 'Please enter your username/email and password.';
     } else {
-
-        $sql = "SELECT u.ID, u.USERNAME, u.FULLNAME, u.PHOTO, u.PASSWORD, u.USERTYPE_ID, t.Usertype AS USERTYPE
+        try {
+            $sql = "
+                SELECT
+                    u.ID,
+                    u.USERNAME,
+                    u.FULLNAME,
+                    u.PHOTO,
+                    u.PASSWORD,
+                    u.USERTYPE_ID,
+                    t.Usertype AS USERTYPE
                 FROM tbl_users u
-                LEFT JOIN tbl_usertype t ON u.USERTYPE_ID = t.ID
-                WHERE USERNAME = ? OR EMAIL = ?
-                LIMIT 1";
+                LEFT JOIN tbl_usertype t
+                    ON u.USERTYPE_ID = t.ID
+                WHERE u.USERNAME = ?
+                   OR u.EMAIL = ?
+                LIMIT 1
+            ";
 
-        $stmt = $conn->prepare($sql);
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param('ss', $login, $login);
+            $stmt->execute();
 
-        if (!$stmt) {
-            die("Database query failed.");
-        }
+            $result = $stmt->get_result();
+            $user = $result->fetch_assoc();
+            $stmt->close();
 
-        $stmt->bind_param("ss", $login, $login);
-        $stmt->execute();
-
-        $result = $stmt->get_result();
-        $user = $result->fetch_assoc();
-
-        $stmt->close();
-
-        if ($user) {
-
-            $storedPassword = $user["PASSWORD"];
-
-            // Verify the entered password against the stored hash
-            if (password_verify($password, $storedPassword)) {
-
-                // Regenerate session ID after successful login
+            if ($user && password_verify(
+                $password,
+                $user['PASSWORD']
+            )) {
                 session_regenerate_id(true);
 
-                $_SESSION["user_id"] = (int)$user["ID"];
-                $_SESSION["username"] = $user["USERNAME"];
-                $_SESSION["fullname"] = $user["FULLNAME"];
-                $_SESSION["photo"] = $user["PHOTO"] ?? null;
-                $_SESSION["usertype_id"] = (int)$user["USERTYPE_ID"] ?? 0;
-                $_SESSION["usertype"] = $user["USERTYPE"] ?? "";
+                $_SESSION['user_id'] = (int) $user['ID'];
+                $_SESSION['username'] = $user['USERNAME'];
+                $_SESSION['fullname'] = $user['FULLNAME'];
+                $_SESSION['photo'] = $user['PHOTO'] ?? null;
+                $_SESSION['usertype_id'] =
+                    (int) ($user['USERTYPE_ID'] ?? 0);
+                $_SESSION['usertype'] =
+                    $user['USERTYPE'] ?? '';
 
-                $landing = "subjects.php";
-                switch ($_SESSION["usertype"]) {
-                    case "Admin":
-                        $landing = "course.php";
-                        break;
-                    case "Registrar":
-                        $landing = "subjects.php";
-                        break;
-                    case "Dean":
-                        $landing = "subjects.php";
-                        break;
-                    case "Instructor":
-                        $landing = "subjects.php";
-                        break;
-                    case "Student":
-                        $landing = "subjects.php";
-                        break;
+                // Redirect according to role
+                if ($_SESSION['usertype'] === 'Admin') {
+                    $landing = 'course.php';
+                } else {
+                    $landing = 'subjects.php';
                 }
-                header("Location: " . $landing);
+
+                header('Location: ' . $landing);
                 exit();
-            } else {
-
-                $error = "Invalid username/email or password.";
             }
-        } else {
 
-            $error = "Invalid username/email or password.";
+            $error = 'Invalid username/email or password.';
+
+        } catch (Throwable $e) {
+            error_log('Login error: ' . $e->getMessage());
+            $error = 'Login unavailable. Please try again later.';
         }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
 
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+          content="width=device-width, initial-scale=1.0">
 
-    <title>Login | ACT 6</title>
+    <title>Login | ADV05</title>
 
     <link rel="stylesheet" href="act2.css">
 
@@ -213,29 +219,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <main class="login-shell">
 
         <header class="login-head">
-            <h1>ACT 6</h1>
+            <h1>ADV05</h1>
             <p>Student Registration &amp; Academic Records</p>
         </header>
 
         <form class="login-form"
-            method="POST"
-            action="login.php">
+              method="POST"
+              action="login.php">
 
             <h2>User Login</h2>
 
             <?php if (!empty($error)): ?>
-
                 <div class="login-error">
                     <?php
                     echo htmlspecialchars(
                         $error,
                         ENT_QUOTES,
-                        "UTF-8"
+                        'UTF-8'
                     );
-
                     ?>
                 </div>
-
             <?php endif; ?>
 
             <label for="login">
@@ -248,12 +251,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 name="login"
                 placeholder="Enter username or email"
                 value="<?php
-                        echo htmlspecialchars(
-                            $_POST["login"] ?? "",
-                            ENT_QUOTES,
-                            "UTF-8"
-                        );
-                        ?>"
+                    echo htmlspecialchars(
+                        $_POST['login'] ?? '',
+                        ENT_QUOTES,
+                        'UTF-8'
+                    );
+                ?>"
                 autocomplete="username"
                 required
                 autofocus>
@@ -276,10 +279,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         </form>
 
-
-
     </main>
 
 </body>
-
 </html>
