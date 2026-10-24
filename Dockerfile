@@ -17,7 +17,10 @@ RUN chown -R www-data:www-data \
     /var/www/html/images/users \
     /var/www/html/uploads
 
-# Give Apache PHP access to Render Secret Files
+# Create group 1000 if it doesn't exist
+RUN getent group 1000 || groupadd -g 1000 rendersecrets
+
+# Give Apache/PHP access to Render Secret Files
 RUN usermod -a -G 1000 www-data
 
 EXPOSE 80
