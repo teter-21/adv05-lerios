@@ -224,7 +224,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <main class="login-shell">
 
         <header class="login-head">
-            <h1>ACT 6</h1>
+            <h1>ADV05</h1>
             <p>Student Registration &amp; Academic Records</p>
         </header>
 
