@@ -26,7 +26,7 @@ foreach ($allLinks as $href => $label) {
 
 <nav class="navbar">
     <div class="nav-brand">
-        <span>ACT 6</span>
+        <span>ADV05</span>
         <small>Student Registration &amp; Academic Records</small>
     </div>
 
