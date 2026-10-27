@@ -285,7 +285,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 Log In
             </button>
 
-            
+            <p class"login-foot">
+                Acccount to Test <br>
+                Email: admin@gmail.com <br>
+                Pass: adv05_12345678
+            </p>
 
         </form>
 
